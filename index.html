@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能体构建全流程指南（详解版）</title>
+  <style>
+    @font-face {
+      font-family: 'InstrumentSans';
+      src: url('_shared/fonts/InstrumentSans-Regular.ttf') format('truetype');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'InstrumentSans';
+      src: url('_shared/fonts/InstrumentSans-Bold.ttf') format('truetype');
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: 'JetBrainsMono';
+      src: url('_shared/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'JetBrainsMono';
+      src: url('_shared/fonts/JetBrainsMono-Bold.ttf') format('truetype');
+      font-weight: 700;
+    }
+
+    :root {
+      --bg: #0a0e1a;
+      --bg2: #121829;
+      --bg3: #1c2640;
+      --bg4: #243352;
+      --ink: #eef1f8;
+      --muted: #8b95a8;
+      --rule: #2a3450;
+      --accent: #4a9eff;
+      --accent2: #a855f7;
+      --accent3: #06d6a0;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font: 'InstrumentSans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrainsMono', 'Fira Code', monospace;
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    ::selection { background: rgba(74, 158, 255, 0.3); color: #fff; }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      padding: 5rem 1.5rem 3rem;
+      text-align: center;
+      overflow: hidden;
+      border-bottom: 1px solid var(--rule);
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(74,158,255,0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 30% 80%, rgba(168,85,247,0.1), transparent),
+        radial-gradient(ellipse 50% 40% at 70% 60%, rgba(6,214,160,0.08), transparent);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(74,158,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74,158,255,0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black, transparent);
+      pointer-events: none;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+    .hero-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent3);
+      background: rgba(6,214,160,0.1);
+      padding: 0.3rem 1rem;
+      border-radius: 20px;
+      border: 1px solid rgba(6,214,160,0.2);
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .hero .subtitle {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 680px;
+      margin: 0 auto 2rem;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-mono);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Section heading */
+    .section-heading {
+      text-align: center;
+      margin: 4rem 0 2rem;
+    }
+    .section-heading h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+    }
+    .section-heading p {
+      font-size: 1rem;
+      color: var(--muted);
+    }
+
+    /* Chapter Grid */
+    .chapter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin: 2rem 0 4rem;
+    }
+    .chapter-card {
+      background: var(--bg2);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .chapter-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s;
+    }
+    .chapter-card:hover {
+      border-color: rgba(74,158,255,0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+    .chapter-card:hover::before {
+      transform: scaleX(1);
+    }
+    .chapter-card .ch-num {
+      font-family: var(--font-mono);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--bg3);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      transition: color 0.3s;
+    }
+    .chapter-card:hover .ch-num {
+      color: rgba(74,158,255,0.15);
+    }
+    .chapter-card .ch-icon {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.2rem;
+      width: 28px;
+      height: 28px;
+      color: var(--accent);
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+    .chapter-card:hover .ch-icon {
+      opacity: 1;
+    }
+    .chapter-card .ch-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+    }
+    .chapter-card .ch-subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.6;
+      flex-grow: 1;
+    }
+    .chapter-card .ch-meta {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .chapter-card .ch-tag {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+    .ch-tag.beginner { background: rgba(6,214,160,0.1); color: var(--accent3); border: 1px solid rgba(6,214,160,0.2); }
+    .ch-tag.intermediate { background: rgba(74,158,255,0.1); color: var(--accent); border: 1px solid rgba(74,158,255,0.2); }
+    .ch-tag.advanced { background: rgba(168,85,247,0.1); color: var(--accent2); border: 1px solid rgba(168,85,247,0.2); }
+
+    /* Roadmap */
+    .roadmap {
+      background: var(--bg2);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin: 3rem 0;
+    }
+    .roadmap h3 {
+      font-size: 1.3rem;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .roadmap-track {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .roadmap-item {
+      display: flex;
+      gap: 1.2rem;
+      padding: 0.8rem 0;
+      position: relative;
+    }
+    .roadmap-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 13px;
+      top: 2.2rem;
+      bottom: -0.2rem;
+      width: 2px;
+      background: var(--rule);
+    }
+    .roadmap-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .roadmap-content h4 {
+      font-size: 0.95rem;
+      color: var(--ink);
+      margin-bottom: 0.2rem;
+    }
+    .roadmap-content p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* Feature Section */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    .feature {
+      background: rgba(18,24,41,0.6);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .feature:hover {
+      border-color: rgba(74,158,255,0.3);
+      transform: translateY(-2px);
+    }
+    .feature svg {
+      width: 32px;
+      height: 32px;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+    .feature h4 {
+      font-size: 0.95rem;
+      color: var(--ink);
+      margin-bottom: 0.3rem;
+    }
+    .feature p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* Learning Path */
+    .learning-path {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: rgba(18,24,41,0.6);
+      border-radius: var(--radius);
+      border: 1px solid var(--rule);
+    }
+    .path-step {
+      background: var(--bg3);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      border: 1px solid rgba(74,158,255,0.15);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .path-step:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .path-arrow {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--rule);
+      padding: 3rem 1.5rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 4rem;
+    }
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    footer .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* Progress indicator */
+    .progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+      z-index: 9999; transition: width 0.1s linear;
+      box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+    }
+
+    /* Back to top */
+    .back-to-top {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; width: 40px; height: 40px;
+      background: rgba(18,24,41,0.9); border: 1px solid var(--rule); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      opacity: 0; visibility: hidden; transition: all 0.3s; z-index: 9998; backdrop-filter: blur(8px);
+    }
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-3px); }
+    .back-to-top svg { width: 18px; height: 18px; color: var(--ink); }
+
+    @media (max-width: 768px) {
+      .hero { padding: 3rem 1rem 2rem; }
+      .hero h1 { font-size: 2rem; }
+      .hero .subtitle { font-size: 0.95rem; }
+      .hero-stats { gap: 1.5rem; }
+      .stat-num { font-size: 1.5rem; }
+      .chapter-grid { grid-template-columns: 1fr; }
+      .section-heading h2 { font-size: 1.4rem; }
+      .learning-path { flex-direction: column; }
+      .path-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-content">
+      <span class="hero-badge">DETAILED EDITION · 2026</span>
+      <h1>智能体构建全流程指南</h1>
+      <p class="subtitle">从零基础到精通——12章详解，覆盖大模型选型、训练、感知、规划、记忆、行动、反馈、反思、压缩、框架、工作流与部署全链路</p>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">12</div>
+          <div class="stat-label">章节</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">50K+</div>
+          <div class="stat-label">行内容</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">200+</div>
+          <div class="stat-label">代码示例</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">100+</div>
+          <div class="stat-label">Mermaid图表</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <div class="container">
+    <div class="section-heading">
+      <h2>本指南特色</h2>
+      <p>不只是入门，更是深入设计与创新的起点</p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <h4>零基础友好</h4>
+        <p>大量生活化类比与实例，无数学背景也能理解</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <h4>痛点深度剖析</h4>
+        <p>每项技术都有痛点分析，知其然更知其所以然</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <h4>优化策略详解</h4>
+        <p>针对每个痛点给出具体优化方案与代码实现</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+        <h4>创新方向指引</h4>
+        <p>指明前沿研究方向，为创新提供灵感与路径</p>
+      </div>
+    </div>
+
+    <!-- Learning Path -->
+    <div class="section-heading">
+      <h2>学习路径</h2>
+      <p>建议按顺序阅读，循序渐进掌握智能体全栈技术</p>
+    </div>
+
+    <div class="learning-path">
+      <a href="chapters/01-model-selection.html" class="path-step">1. 选型</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/02-model-training.html" class="path-step">2. 训练</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/03-perception.html" class="path-step">3. 感知</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/04-planning.html" class="path-step">4. 规划</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/05-memory.html" class="path-step">5. 记忆</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/06-action.html" class="path-step">6. 行动</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/07-feedback.html" class="path-step">7. 反馈</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/08-reflection.html" class="path-step">8. 反思</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/09-context-compression.html" class="path-step">9. 压缩</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/10-harness-skills.html" class="path-step">10. 框架</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/11-workflow.html" class="path-step">11. 工作流</a>
+      <span class="path-arrow">→</span>
+      <a href="chapters/12-deployment.html" class="path-step">12. 部署</a>
+    </div>
+
+    <!-- Roadmap -->
+    <div class="roadmap">
+      <h3>知识体系路线图</h3>
+      <div class="roadmap-track">
+        <div class="roadmap-item">
+          <div class="roadmap-dot">01</div>
+          <div class="roadmap-content">
+            <h4>基础层：模型与训练</h4>
+            <p>第1-2章 · 从大模型选型、精度量化、GPU显存计算到预训练、微调（LoRA/QLoRA）与对齐（RLHF/DPO）</p>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-dot">02</div>
+          <div class="roadmap-content">
+            <h4>感知层：信息输入</h4>
+            <p>第3章 · 多模态理解、文本分块、向量化编码、ViT/CLIP视觉模型、结构化数据感知</p>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-dot">03</div>
+          <div class="roadmap-content">
+            <h4>认知层：思考与记忆</h4>
+            <p>第4-5章 · CoT/ReAct/ToT规划策略、短期/长期记忆、向量数据库、知识图谱、RAG检索增强</p>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-dot">04</div>
+          <div class="roadmap-content">
+            <h4>执行层：行动与反馈</h4>
+            <p>第6-7章 · 工具调用、API执行、代码沙箱、执行验证、评估体系、自动修正闭环</p>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-dot">05</div>
+          <div class="roadmap-content">
+            <h4>进化层：反思与压缩</h4>
+            <p>第8-9章 · Reflexion自我改进、经验积累、上下文压缩、KV Cache优化、多级压缩架构</p>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-dot">06</div>
+          <div class="roadmap-content">
+            <h4>工程层：框架与部署</h4>
+            <p>第10-12章 · Harness运行时框架、多Agent工作流编排、推理优化、容器部署、监控运维</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter Cards -->
+    <div class="section-heading">
+      <h2>章节目录</h2>
+      <p>点击任意章节卡片进入详细内容</p>
+    </div>
+
+    <div class="chapter-grid">
+      <a href="chapters/01-model-selection.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
+        <div class="ch-num">01</div>
+        <div class="ch-title">大模型选型与硬件选型</div>
+        <p class="ch-subtitle">从零理解LLM架构、精度量化与GPU显存计算</p>
+        <div class="ch-meta">
+          <span class="ch-tag beginner">入门</span>
+          <span class="ch-tag intermediate">实操</span>
+        </div>
+      </a>
+
+      <a href="chapters/02-model-training.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <div class="ch-num">02</div>
+        <div class="ch-title">大模型训练全解</div>
+        <p class="ch-subtitle">预训练、微调（LoRA/QLoRA）、对齐（RLHF/DPO）的原理与优化</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">进阶</span>
+          <span class="ch-tag advanced">深度</span>
+        </div>
+      </a>
+
+      <a href="chapters/03-perception.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <div class="ch-num">03</div>
+        <div class="ch-title">感知模块与关键技术</div>
+        <p class="ch-subtitle">多模态理解、文本分块、向量化与编码器原理</p>
+        <div class="ch-meta">
+          <span class="ch-tag beginner">入门</span>
+          <span class="ch-tag intermediate">实操</span>
+        </div>
+      </a>
+
+      <a href="chapters/04-planning.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <div class="ch-num">04</div>
+        <div class="ch-title">规划模块与关键技术</div>
+        <p class="ch-subtitle">CoT、ReAct、ToT的原理、痛点与优化创新方向</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">进阶</span>
+          <span class="ch-tag advanced">创新</span>
+        </div>
+      </a>
+
+      <a href="chapters/05-memory.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <div class="ch-num">05</div>
+        <div class="ch-title">记忆模块与关键技术</div>
+        <p class="ch-subtitle">短期记忆、向量数据库、知识图谱与RAG深度解析</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">进阶</span>
+          <span class="ch-tag advanced">深度</span>
+        </div>
+      </a>
+
+      <a href="chapters/06-action.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <div class="ch-num">06</div>
+        <div class="ch-title">行动模块与技术</div>
+        <p class="ch-subtitle">工具调用、API执行、代码沙箱与硬件控制</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">实操</span>
+          <span class="ch-tag advanced">深度</span>
+        </div>
+      </a>
+
+      <a href="chapters/07-feedback.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <div class="ch-num">07</div>
+        <div class="ch-title">结果反馈闭环</div>
+        <p class="ch-subtitle">执行验证、评估体系与自动修正机制</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">进阶</span>
+          <span class="ch-tag advanced">创新</span>
+        </div>
+      </a>
+
+      <a href="chapters/08-reflection.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div class="ch-num">08</div>
+        <div class="ch-title">反思模块</div>
+        <p class="ch-subtitle">Reflexion框架、经验积累与自我改进</p>
+        <div class="ch-meta">
+          <span class="ch-tag advanced">深度</span>
+          <span class="ch-tag advanced">创新</span>
+        </div>
+      </a>
+
+      <a href="chapters/09-context-compression.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        <div class="ch-num">09</div>
+        <div class="ch-title">上下文压缩机制</div>
+        <p class="ch-subtitle">滑动窗口、语义摘要与KV Cache优化</p>
+        <div class="ch-meta">
+          <span class="ch-tag advanced">深度</span>
+          <span class="ch-tag advanced">优化</span>
+        </div>
+      </a>
+
+      <a href="chapters/10-harness-skills.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/><rect x="2" y="2" width="20" height="20" rx="2" style="display:none"/></svg>
+        <div class="ch-num">10</div>
+        <div class="ch-title">Harness与Skills</div>
+        <p class="ch-subtitle">Agent运行时框架、技能设计与框架对比</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">实操</span>
+          <span class="ch-tag advanced">架构</span>
+        </div>
+      </a>
+
+      <a href="chapters/11-workflow.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v6a3 3 0 0 0 3 3h6"/></svg>
+        <div class="ch-num">11</div>
+        <div class="ch-title">工作流设计</div>
+        <p class="ch-subtitle">工作流引擎、编排模式与多Agent协作</p>
+        <div class="ch-meta">
+          <span class="ch-tag advanced">架构</span>
+          <span class="ch-tag advanced">深度</span>
+        </div>
+      </a>
+
+      <a href="chapters/12-deployment.html" class="chapter-card">
+        <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <div class="ch-num">12</div>
+        <div class="ch-title">部署与运维</div>
+        <p class="ch-subtitle">推理优化、容器部署、监控与持续迭代</p>
+        <div class="ch-meta">
+          <span class="ch-tag intermediate">实操</span>
+          <span class="ch-tag advanced">运维</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="back-to-top" id="backToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg>
+  </div>
+
+  <footer>
+    <div class="footer-links">
+      <a href="chapters/01-model-selection.html">从头开始</a>
+      <a href="chapters/12-deployment.html">跳到部署</a>
+      <a href="https://github.com/dingjq1216/agent-building-guide" target="_blank">GitHub仓库</a>
+    </div>
+    <p>智能体构建全流程指南（详解版） · 共12章 · 面向零基础人员 · 不只是入门，更重设计与创新</p>
+  </footer>
+
+  <script>
+    const progressBar = document.getElementById('progressBar');
+    const backToTop = document.getElementById('backToTop');
+
+    function updateProgress() {
+      const sh = document.documentElement.scrollHeight - window.innerHeight;
+      progressBar.style.width = (window.scrollY / sh * 100) + '%';
+      backToTop.classList.toggle('visible', window.scrollY > 400);
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+  </script>
+</body>
+</html>
