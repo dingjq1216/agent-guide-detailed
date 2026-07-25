@@ -153,7 +153,7 @@
     .mini-toc a:hover { color: var(--ink); }
 
     /* Sections */
-    section { margin: 3rem 0; opacity: 0; transform: translateY(20px); transition: opacity 0.6s, transform 0.6s; }
+    section { margin: 1.5rem 0; opacity: 0; transform: translateY(10px); transition: opacity 0.35s, transform 0.35s; }
     section.visible { opacity: 1; transform: translateY(0); }
     section h2 {
       font-size: 1.65rem; font-weight: 700; color: var(--ink);
@@ -4711,8 +4711,12 @@ graph TB
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-    }, { threshold: 0.05, rootMargin: '0px 0px -60px 0px' });
-    document.querySelectorAll('section').forEach(s => observer.observe(s));
+    }, { threshold: 0.01, rootMargin: '0px 0px -20px 0px' });
+    document.querySelectorAll('section').forEach(s => {
+      observer.observe(s);
+      const r = s.getBoundingClientRect();
+      if (r.top < window.innerHeight && r.bottom > 0) s.classList.add('visible');
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof mermaid !== 'undefined') {
