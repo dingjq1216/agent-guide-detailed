@@ -560,7 +560,7 @@ graph LR
 
   <h3>2.2 O(n²)复杂度：为什么窗口不能无限大</h3>
 
-  <p>让我们用具体数字感受一下O(n²)的威力。假设一个模型隐藏维度d=4096，使用FP16精度（每个数字2字节）：</p>
+  <p>用具体数字感受一下O(n²)的威力。假设一个模型隐藏维度d=4096，使用FP16精度（每个数字2字节）：</p>
 
   <div class="table-wrap">
     <table>
@@ -1222,7 +1222,7 @@ class SmartBoundaryWindow:
   </div>
 
     <p><strong>优化2：上下文重叠（Context Overlap）</strong></p>
-    <p>相邻窗口之间保留一定重叠——就像视频剪辑中的"过渡帧"，让信息在窗口边界处平滑过渡。典型重叠量为窗口大小的10%-20%。重叠部分确保边界处的话题不会突然消失。</p>
+    <p>相邻窗口之间保留一定重叠，让信息在窗口边界处平滑过渡。典型重叠量为窗口大小的10%-20%。重叠部分确保边界处的话题不会突然消失。</p>
 
     <p><strong>优化3：重要性加权保留（Importance-Weighted Retention）</strong></p>
     <p>不是无差别地丢弃旧消息，而是根据<strong>重要性分数</strong>决定保留哪些。重要性分数可以基于：消息是否包含用户偏好、是否包含任务关键信息、是否被后续对话引用、消息的信息密度。高重要性消息即使很旧也保留，低重要性消息即使很新也优先丢弃。</p>
@@ -1363,7 +1363,7 @@ graph LR
 
   <h3>4.1 抽取式摘要：挑选关键句</h3>
 
-  <p>摘要的第一种方式是<strong>抽取式</strong>（Extractive）——不改变原文，直接从原文中"挑选"最重要的句子。就像考试划重点——你不会重写课本，而是在课本上用荧光笔画出关键句。</p>
+  <p>摘要的第一种方式是<strong>抽取式</strong>（Extractive）——不改变原文，直接从原文中"挑选"最重要的句子。</p>
 
   <p>抽取式摘要的核心是<strong>句子重要性评分</strong>。常见算法包括：</p>
 
@@ -1693,7 +1693,7 @@ graph BT
 
   <h3>4.4 渐进式摘要：迭代精炼</h3>
 
-  <p><strong>渐进式摘要</strong>（Progressive Summarization）是另一种思路——不是一次性压缩，而是<strong>每轮对话后增量更新</strong>摘要。就像写日记：每天追加一条，定期回顾整理。这样摘要始终是"最新的"，且不需要重新处理全部历史。</p>
+  <p><strong>渐进式摘要</strong>（Progressive Summarization）是另一种思路——不是一次性压缩，而是<strong>每轮对话后增量更新</strong>摘要。这样摘要始终是"最新的"，且不需要重新处理全部历史。</p>
 
   <div class="step-flow">
     <span class="step">新消息进入</span>
@@ -1787,7 +1787,7 @@ print(f"最终上下文: {len(ctx)}条消息")
     <p><strong>痛点2：摘要偏差（Summary Bias）</strong></p>
     <p>LLM生成摘要时会"选择性关注"——倾向于保留显眼的信息（数字、人名、结论），忽略隐含的信息（语气、上下文逻辑、未明说的假设）。这种偏差会导致摘要"看似完整实则片面"。更糟糕的是，LLM可能"幻觉"——在摘要中加入原文没有的内容。</p>
     <p><strong>痛点3：级联误差（Cascade Errors）</strong></p>
-    <p>在层次化或渐进式摘要中，每一层摘要都基于上一层。如果第一层摘要丢了某个关键信息，后续所有层都不会有这个信息——误差会<strong>级联放大</strong>。就像"传话游戏"——传得越多，失真越大。10层摘要后，原始信息可能已面目全非。</p>
+    <p>在层次化或渐进式摘要中，每一层摘要都基于上一层。如果第一层摘要丢了某个关键信息，后续所有层都不会有这个信息——误差会<strong>级联放大</strong>。</p>
     <p><strong>痛点4：领域内容损失（Domain-Specific Loss）</strong></p>
     <p>通用LLM做摘要时，对专业领域内容（代码、公式、医学术语、法律条文）的压缩质量较差——它可能把一段精确的代码逻辑概括成模糊的自然语言，丢失关键的技术细节。这对代码助手、医疗助手等专业智能体是致命的。</p>
   </div>
@@ -1881,7 +1881,7 @@ graph LR
 
   <h3>5.2 KV Cache的内存计算：为什么长序列会"爆显存"</h3>
 
-  <p>KV Cache虽然加速了推理，但它本身需要大量内存。随着序列变长，KV Cache的体积线性增长——这就是长上下文推理"爆显存"的根源。让我们精确计算KV Cache的大小。</p>
+  <p>KV Cache虽然加速了推理，但它本身需要大量内存。随着序列变长，KV Cache的体积线性增长——这就是长上下文推理"爆显存"的根源。下面精确计算KV Cache的大小。</p>
 
   <div class="formula">
     KV Cache 内存大小计算公式：<br><br>
@@ -2662,7 +2662,7 @@ print(f"剪枝后: {''.join(pruned)}")
 
   <h3>7.2 Token合并：融合相似Token</h3>
 
-  <p><strong>Token合并</strong>（Token Merging）不是删除token，而是把语义相似的token<strong>合并</strong>成一个——用它们的加权平均表示替代。这就像把"很高兴"和"非常开心"合并成一个"开心"的概念。Token合并能减少token数量而不丢失语义，是比剪枝更"温和"的压缩方式。</p>
+  <p><strong>Token合并</strong>（Token Merging）不是删除token，而是把语义相似的token<strong>合并</strong>成一个——用它们的加权平均表示替代。Token合并能减少token数量而不丢失语义，是比剪枝更"温和"的压缩方式。</p>
 
   <div class="formula">
     Token合并的核心步骤（ToMe算法）：<br><br>
@@ -3529,7 +3529,7 @@ graph TB
 <section id="sec-practice">
   <h2>10. 实战：构建上下文压缩系统</h2>
 
-  <p>理论学了很多，现在让我们动手把前面学到的所有压缩策略整合成一个<strong>完整的多策略上下文压缩系统</strong>。这个系统将包含四个核心组件：TokenBudgetManager（预算管理）、SummarizationCompressor（摘要压缩）、KVCacheOptimizer（KV缓存优化）、RetrievalCompressor（检索压缩），并展示压缩前后的对比效果。</p>
+  <p>理论学了很多，下面动手把前面学到的所有压缩策略整合成一个<strong>完整的多策略上下文压缩系统</strong>。这个系统将包含四个核心组件：TokenBudgetManager（预算管理）、SummarizationCompressor（摘要压缩）、KVCacheOptimizer（KV缓存优化）、RetrievalCompressor（检索压缩），并展示压缩前后的对比效果。</p>
 
   <h3>10.1 系统架构设计</h3>
 
@@ -4292,7 +4292,7 @@ evaluator.benchmark_strategies(original, strategies)
 
   <div class="callout">
     <div class="callout-title">本节小结</div>
-    <p>性能评估是上下文压缩不可或缺的一环——没有度量就没有优化。核心指标包括压缩比、信息保留率、延迟降低和下游任务准确率。评估时应关注"压缩比-准确率"的权衡曲线，找到最优平衡点。在实际项目中，建议建立自动化评估流水线，持续监控压缩系统的表现。</p>
+    <p>性能评估是上下文压缩的关键环节——没有度量就没有优化。核心指标包括压缩比、信息保留率、延迟降低和下游任务准确率。评估时应关注"压缩比-准确率"的权衡曲线，找到最优平衡点。在实际项目中，建议建立自动化评估流水线，持续监控压缩系统的表现。</p>
   </div>
 
 </section>
