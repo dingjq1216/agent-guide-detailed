@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>第04章 规划模块与关键技术 - 智能体构建全流程指南（详解版）</title>
+  <title>第06章 规划模块与关键技术 - 智能体构建全流程指南（详解版）</title>
   <link rel="stylesheet" href="../_shared/css/style.css">
 </head>
 <body>
@@ -15,17 +15,17 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10"/></svg>
       智能体构建指南
     </a>
-    <span class="nav-chapter-label">第 4 章 / 共 12 章</span>
+    <span class="nav-chapter-label">第 6 章 / 共 17 章</span>
     <div class="nav-links">
-      <a href="03-perception.html" class="">← 上一章</a>
-      <a href="05-memory.html" class="">下一章 →</a>
+      <a href="05-rag.html" class="">← 上一章</a>
+      <a href="07-action.html" class="">下一章 →</a>
     </div>
   </nav>
 
   <div class="hero">
-    <span class="chapter-badge">CHAPTER 04 / 12</span>
+    <span class="chapter-badge">CHAPTER 06 / 17</span>
     <h1>规划模块与关键技术</h1>
-    <p class="subtitle">CoT、ReAct、ToT的原理、痛点与优化创新方向</p>
+    <p class="subtitle">CoT、ReAct、ToT、RAP、LLM-A*、PDDL、ASP与SwiftSage的原理与优化</p>
   </div>
 
   <article class="page">
@@ -40,6 +40,11 @@
     <li><a href="#sec-tot">Tree of Thoughts（思维树）</a></li>
     <li><a href="#sec-got">Graph of Thoughts（思维图）</a></li>
     <li><a href="#sec-plan">Plan-and-Solve 与任务分解</a></li>
+    <li><a href="#sec-rap">RAP：基于世界模型的推理规划</a></li>
+    <li><a href="#sec-llm-astar">LLM-A*：LLM 驱动的启发式搜索</a></li>
+    <li><a href="#sec-pddl">PDDL：经典符号规划与 LLM 融合</a></li>
+    <li><a href="#sec-asp">ASP：回答集编程与约束推理</a></li>
+    <li><a href="#sec-swiftsage">SwiftSage：双系统推理框架</a></li>
     <li><a href="#sec-compare">规划策略对比与选型</a></li>
     <li><a href="#sec-practice">实战：构建多策略规划器</a></li>
     <li><a href="#sec-eval">性能评估与基准测试</a></li>
@@ -2404,10 +2409,924 @@ class LLMPlusP:
   </div>
 </section>
 
+<section id="sec-rap">
+  <h2>RAP：基于世界模型的推理规划</h2>
+
+  <p><strong>Reasoning via Planning（RAP）</strong> 是 Hao 等人在 2023 年提出的一种将<strong>世界模型（World Model）</strong>引入 LLM 推理的框架。它的核心思想是：把 LLM 同时用作<mark class="key">推理器</mark>和<mark class="key">世界模型</mark>，用蒙特卡洛树搜索（MCTS）在"脑内模拟空间"中寻找最优推理路径。</p>
+
+  <div class="callout">
+    <div class="callout-title">RAP 的核心洞察</div>
+    <p>传统的 CoT 是"一条路走到底"——生成一条推理链，对了就对了，错了也无法回头。RAP 的思路是：既然我们能在脑中"模拟"行动的后果，为什么不模拟多条推理路径，然后选最优的？这就是把<strong>规划算法（MCTS）</strong>引入推理过程。</p>
+  </div>
+
+  <h3>6.1 RAP 的架构设计</h3>
+
+  <p>RAP 框架将推理过程建模为一个<strong>马尔可夫决策过程（MDP）</strong>：</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>状态（State）</h4>
+      <p>推理过程中的中间结果——当前已生成的推理步骤序列。每个状态代表"到目前为止我推理到了哪里"。</p>
+    </div>
+    <div class="card">
+      <h4>行动（Action）</h4>
+      <p>生成下一个推理步骤的操作。行动空间可以是"生成下一句话"、"提出假设"、"执行计算"等。</p>
+    </div>
+    <div class="card">
+      <h4>转移（Transition）</h4>
+      <p>由 LLM 充当世界模型——给定当前状态和行动，LLM 预测下一个状态。这就是"在脑中模拟"。</p>
+    </div>
+    <div class="card">
+      <h4>奖励（Reward）</h4>
+      <p>评估当前推理路径的质量。可以是 LLM 自评、外部验证器、或基于置信度的启发式分数。</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <pre class="mermaid">
+graph TB
+    S0["初始状态<br/>(问题)"] -->|"行动1"| S1["中间状态1"]
+    S0 -->|"行动2"| S2["中间状态2"]
+    S0 -->|"行动3"| S3["中间状态3"]
+    S1 -->|"行动4"| S4["中间状态4"]
+    S1 -->|"行动5"| S5["中间状态5"]
+    S2 -->|"行动6"| S6["中间状态6"]
+    S3 -->|"行动7"| S7["目标状态<br/>(答案)"]
+    S4 -->|"行动8"| S8["目标状态<br/>(答案)"]
+    
+    style S0 fill:#1c2640,stroke:#4a9eff,color:#eef1f8
+    style S7 fill:#1c2640,stroke:#06d6a0,color:#eef1f8
+    style S8 fill:#1c2640,stroke:#06d6a0,color:#eef1f8
+    </pre>
+    <figcaption>图4.7：RAP 的状态空间搜索——MCTS 在推理空间中探索多条路径</figcaption>
+  </div>
+
+  <h3>6.2 MCTS 搜索过程</h3>
+
+  <p>RAP 使用<strong> Upper Confidence Trees（UCT）</strong>策略来平衡探索与利用。每次迭代包含四个阶段：</p>
+
+  <div class="tech-panel">
+    <div class="tech-panel-header" onclick="togglePanel(this)">
+      <span class="tech-panel-title">MCTS 四阶段详解</span>
+      <span class="tech-panel-badge">算法</span>
+      <svg class="tech-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="tech-panel-body">
+      <p><strong>1. 选择（Selection）：</strong>从根节点开始，使用 UCT 公式选择最有前景的子节点，直到到达未完全展开的节点。UCT 公式为：UCT = Q(s,a) + c · √(ln N(s) / N(s,a))，其中 Q 是平均奖励，N 是访问次数，c 是探索常数。</p>
+      <p><strong>2. 扩展（Expansion）：</strong>在选中节点处，让 LLM 生成 k 个可能的下一步推理，创建新的子节点。每个新节点代表一条不同的推理方向。</p>
+      <p><strong>3. 模拟（Simulation）：</strong>从新节点出发，用 LLM 快速"走到底"——贪心生成推理链直到得出答案。这一步用快速近似估计节点价值。</p>
+      <p><strong>4. 回传（Backpropagation）：</strong>将模拟得到的奖励沿路径回传到根节点，更新各节点的访问次数和平均奖励。下一轮迭代时，UCT 会据此做出更好的选择。</p>
+    </div>
+  </div>
+
+  <h3>6.3 RAP 的实现</h3>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">Python — RAP 框架核心实现</span>
+      <span class="code-toggle-meta">~120行</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>import math
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+@dataclass
+class RAPNode:
+    """RAP 搜索树节点"""
+    state: str                    # 当前推理状态（已生成的推理文本）
+    parent: Optional['RAPNode'] = None
+    action: Optional[str] = None  # 到达此节点的行动
+    children: List['RAPNode'] = field(default_factory=list)
+    visits: int = 0
+    value: float = 0.0            # 累计奖励
+    is_terminal: bool = False
+
+    def uct_score(self, c: float = 1.414) -> float:
+        """计算 UCT 分数"""
+        if self.visits == 0:
+            return float('inf')
+        exploit = self.value / self.visits
+        explore = c * math.sqrt(math.log(self.parent.visits) / self.visits)
+        return exploit + explore
+
+    def best_child(self, c: float = 1.414) -> 'RAPNode':
+        """选择 UCT 分数最高的子节点"""
+        return max(self.children, key=lambda ch: ch.uct_score(c))
+
+
+class RAPReasoner:
+    """基于世界模型的推理规划器"""
+
+    def __init__(self, llm, max_depth: int = 5, num_actions: int = 3,
+                 simulations: int = 20):
+        self.llm = llm              # LLM 接口
+        self.max_depth = max_depth
+        self.num_actions = num_actions
+        self.simulations = simulations
+
+    def world_model(self, state: str, action: str) -> str:
+        """世界模型：预测行动后的新状态"""
+        prompt = f"当前推理状态:\n{state}\n\n执行行动: {action}\n\n新状态:"
+        return self.llm.generate(prompt, max_tokens=100)
+
+    def propose_actions(self, state: str) -> List[str]:
+        """让 LLM 提出 k 个可能的下一步行动"""
+        prompt = f"问题: {state}\n\n请提出 {self.num_actions} 个不同的推理方向:"
+        response = self.llm.generate(prompt, max_tokens=200)
+        return [a.strip() for a in response.split('\n') if a.strip()][:self.num_actions]
+
+    def reward(self, state: str) -> float:
+        """评估状态的奖励值"""
+        prompt = f"评估以下推理路径的质量（0-1分）:\n{state}\n\n分数:"
+        score_text = self.llm.generate(prompt, max_tokens=10)
+        try:
+            return float(score_text.strip())
+        except ValueError:
+            return 0.5
+
+    def is_terminal(self, state: str) -> bool:
+        """判断是否到达终止状态（已得出答案）"""
+        return "答案:" in state or "结论:" in state
+
+    def search(self, problem: str) -> str:
+        """MCTS 搜索主循环"""
+        root = RAPNode(state=problem)
+
+        for _ in range(self.simulations):
+            # 1. 选择
+            node = root
+            depth = 0
+            while node.children and not node.is_terminal and depth < self.max_depth:
+                node = node.best_child()
+                depth += 1
+
+            # 2. 扩展
+            if not node.is_terminal and depth < self.max_depth:
+                actions = self.propose_actions(node.state)
+                for action in actions:
+                    new_state = self.world_model(node.state, action)
+                    child = RAPNode(
+                        state=new_state, parent=node, action=action,
+                        is_terminal=self.is_terminal(new_state)
+                    )
+                    node.children.append(child)
+                # 选择第一个新子节点进行模拟
+                node = node.children[0] if node.children else node
+
+            # 3. 模拟 — 快速走到底
+            sim_state = node.state
+            sim_depth = depth
+            while not self.is_terminal(sim_state) and sim_depth < self.max_depth:
+                actions = self.propose_actions(sim_state)
+                sim_state = self.world_model(sim_state, actions[0])
+                sim_depth += 1
+
+            # 4. 回传
+            reward = self.reward(sim_state)
+            while node is not None:
+                node.visits += 1
+                node.value += reward
+                node = node.parent
+
+        # 返回访问次数最多的路径
+        best = max(root.children, key=lambda ch: ch.visits)
+        return best.state</code></pre>
+    </div>
+  </div>
+
+  <h3>6.4 RAP 的优势与局限</h3>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>维度</th><th>优势</th><th>局限</th></tr>
+      <tr><td>推理质量</td><td>通过搜索多条路径，显著减少"一条路走到底"的错误</td><td>LLM 世界模型本身可能不准确，导致模拟偏差</td></tr>
+      <tr><td>计算成本</td><td>—</td><td>MCTS 每次迭代需要多次 LLM 调用，成本是 CoT 的 10-50 倍</td></tr>
+      <tr><td>适用场景</td><td>数学推理、逻辑谜题、代码生成等有明确答案的任务</td><td>开放式创意任务（写作、头脑风暴）收益不大</td></tr>
+      <tr><td>可解释性</td><td>搜索树可视化了推理过程，便于调试</td><td>树规模大时难以人工审查</td></tr>
+    </table>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-title">RAP 的关键权衡</div>
+    <p>RAP 本质上用<strong>计算量换取推理质量</strong>。在需要高精度推理但计算预算充足的场景（如数学竞赛、形式化验证），RAP 值得使用。在追求低延迟的实时对话场景，CoT 或 ReAct 更合适。一个实践建议：对关键决策步骤用 RAP，对常规步骤用 CoT，形成"快慢结合"的混合策略。</p>
+  </div>
+</section>
+
+<section id="sec-llm-astar">
+  <h2>LLM-A*：LLM 驱动的启发式搜索</h2>
+
+  <p><strong>LLM-A*</strong> 是将经典 AI 中的 <mark class="key">A* 搜索算法</mark>与 LLM 结合的规划方法。A* 算法通过 <code>g(n) + h(n)</code> 评估节点——g(n) 是从起点到当前节点的实际代价，h(n) 是从当前节点到目标的启发式估计。LLM-A* 的创新在于：<strong>用 LLM 来估计 h(n)</strong>，替代传统的手工设计启发式函数。</p>
+
+  <h3>7.1 设计动机</h3>
+
+  <p>经典 A* 的效果高度依赖启发式函数 h(n) 的质量。在迷宫寻路等结构化问题中，曼哈顿距离或欧几里得距离是很好的启发式。但在自然语言规划中——"从'写一篇文章'到'完成一篇高质量文章'"的距离怎么算？传统方法无法回答。</p>
+
+  <p>LLM 的优势恰恰在于<strong>语义理解</strong>——它能判断"当前状态离目标还有多远"。LLM-A* 就是把这种语义判断转化为启发式函数。</p>
+
+  <h3>7.2 算法流程</h3>
+
+  <div class="diagram">
+    <pre class="mermaid">
+graph LR
+    A["起始状态"] --> B["开放列表<br/>(优先队列)"]
+    B -->|"取 f 最小"| C["当前节点 n"]
+    C --> D{"是否为目标?"}
+    D -->|"是"| E["返回路径"]
+    D -->|"否"| F["LLM 生成<br/>后续状态"]
+    F --> G["LLM 估算 h(n')"]
+    G --> H["计算 f = g + h"]
+    H --> B
+    
+    style A fill:#1c2640,stroke:#4a9eff,color:#eef1f8
+    style E fill:#1c2640,stroke:#06d6a0,color:#eef1f8
+    </pre>
+    <figcaption>图4.8：LLM-A* 搜索流程</figcaption>
+  </div>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">Python — LLM-A* 核心实现</span>
+      <span class="code-toggle-meta">~90行</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>import heapq
+from dataclasses import dataclass, field
+from typing import List, Set
+
+@dataclass(order=True)
+class AStarNode:
+    f_score: float                          # f = g + h
+    g_score: float = field(compare=False)   # 已知代价
+    state: str = field(compare=False)
+    parent: 'AStarNode' = field(default=None, compare=False)
+
+class LLMAStar:
+    """LLM 驱动的 A* 搜索"""
+
+    def __init__(self, llm, max_expansions: int = 50):
+        self.llm = llm
+        self.max_expansions = max_expansions
+
+    def heuristic(self, current: str, goal: str) -> float:
+        """用 LLM 估算从当前状态到目标的距离（0-10分）"""
+        prompt = f"""评估从当前状态到目标的距离。
+
+当前状态: {current}
+目标: {goal}
+
+请只返回一个0到10的数字，0表示已到达目标，10表示距离目标非常远。
+分数:"""
+        response = self.llm.generate(prompt, max_tokens=5)
+        try:
+            score = float(response.strip())
+            return min(max(score, 0), 10)
+        except ValueError:
+            return 5.0
+
+    def expand(self, current: str) -> List[str]:
+        """让 LLM 生成后续可能状态"""
+        prompt = f"当前状态: {current}\n\n请生成3个可能的下一步状态（每行一个）:"
+        response = self.llm.generate(prompt, max_tokens=200)
+        return [s.strip() for s in response.split('\n') if s.strip()][:3]
+
+    def is_goal(self, state: str, goal: str) -> bool:
+        """判断是否到达目标"""
+        prompt = f"当前状态是否已满足目标？\n状态: {state}\n目标: {goal}\n\n回答 是 或 否:"
+        return '是' in self.llm.generate(prompt, max_tokens=3)
+
+    def search(self, start: str, goal: str) -> List[str]:
+        """A* 搜索主循环"""
+        h0 = self.heuristic(start, goal)
+        open_list = [AStarNode(f_score=h0, g_score=0, state=start)]
+        visited: Set[str] = {start}
+        expansions = 0
+
+        while open_list and expansions < self.max_expansions:
+            current = heapq.heappop(open_list)
+
+            if self.is_goal(current.state, goal):
+                # 回溯路径
+                path = []
+                node = current
+                while node:
+                    path.append(node.state)
+                    node = node.parent
+                return list(reversed(path))
+
+            if current.state in visited:
+                continue
+            visited.add(current.state)
+            expansions += 1
+
+            for next_state in self.expand(current.state):
+                if next_state in visited:
+                    continue
+                g = current.g_score + 1  # 统一代价
+                h = self.heuristic(next_state, goal)
+                f = g + h
+                heapq.heappush(open_list,
+                    AStarNode(f_score=f, g_score=g, state=next_state,
+                              parent=current))
+
+        return None  # 未找到路径</code></pre>
+    </div>
+  </div>
+
+  <h3>7.3 LLM-A* vs 传统 A* vs ToT</h3>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>维度</th><th>传统 A*</th><th>ToT</th><th>LLM-A*</th></tr>
+      <tr><td>启发式来源</td><td>手工设计（距离函数）</td><td>LLM 自评</td><td>LLM 估算语义距离</td></tr>
+      <tr><td>搜索策略</td><td>最优优先（f=g+h）</td><td>广度/深度优先 + 剪枝</td><td>最优优先（f=g+h）</td></tr>
+      <tr><td>完备性</td><td>可证明完备</td><td>不保证</td><td>不保证（h 不可靠时可能遗漏）</td></tr>
+      <tr><td>效率</td><td>高（h 精确时极快）</td><td>中（需评估所有分支）</td><td>中（h 估算成本较高）</td></tr>
+      <tr><td>适用场景</td><td>结构化问题（迷宫、路径）</td><td>创意推理（写作、解题）</td><td>半结构化问题（旅行规划、任务编排）</td></tr>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">LLM-A* 的核心价值</div>
+    <p>LLM-A* 的最大贡献不是算法本身（A* 已有半个世纪），而是<strong>将 LLM 的语义理解能力转化为启发式函数</strong>。这让 A* 从"只能解决有明确距离度量的问题"扩展到"能解决语义层面的规划问题"。代价是 LLM 调用成本——每次 h(n) 估算都需要一次 LLM 推理。</p>
+  </div>
+</section>
+
+<section id="sec-pddl">
+  <h2>PDDL：经典符号规划与 LLM 融合</h2>
+
+  <p><strong>Planning Domain Definition Language（PDDL）</strong>是经典 AI 规划领域的标准描述语言，自 1998 年首届国际规划竞赛（IPC）以来一直是该领域的通用语言。PDDL 用形式化的谓词逻辑描述<strong>世界状态</strong>和<strong>操作符</strong>，然后用符号规划器（如 Fast Downward、LAMA）搜索从初始状态到目标状态的动作序列。</p>
+
+  <h3>8.1 PDDL 与 LLM 的互补性</h3>
+
+  <p>LLM 和 PDDL 恰好在对方薄弱的方面互补：</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>LLM 的强项</h4>
+      <p>自然语言理解、常识推理、灵活适应新任务。能把模糊的用户需求转化为结构化描述。</p>
+    </div>
+    <div class="card">
+      <h4>LLM 的弱项</h4>
+      <p>缺乏形式化保证、长链推理易出错、无法保证计划的可行性。</p>
+    </div>
+    <div class="card">
+      <h4>PDDL 的强项</h4>
+      <p>形式化保证、完备搜索、可验证的最优解。能确保计划在逻辑上是正确的。</p>
+    </div>
+    <div class="card">
+      <h4>PDDL 的弱项</h4>
+      <p>需要人工编写领域定义、无法处理自然语言、状态空间爆炸时无法扩展。</p>
+    </div>
+  </div>
+
+  <p>融合方案是：<strong>LLM 负责"翻译"，PDDL 负责"求解"</strong>。LLM 将自然语言任务转化为 PDDL 问题描述，符号规划器求解后再由 LLM 将结果翻译回自然语言。</p>
+
+  <h3>8.2 PDDL 基础语法</h3>
+
+  <p>PDDL 分为<strong>领域文件（Domain）</strong>和<strong>问题文件（Problem）</strong>两部分。</p>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">PDDL — 领域文件示例（物流配送）</span>
+      <span class="code-toggle-meta">domain.pddl</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>;; 物流配送领域定义
+(define (domain logistics)
+  (:requirements :strips :typing)
+  (:types truck package location)
+
+  (:predicates
+    (at ?p - package ?l - location)        ;; 包裹在某位置
+    (at-truck ?t - truck ?l - location)    ;; 卡车在某位置
+    (in ?p - package ?t - truck)            ;; 包裹在卡车内
+  )
+
+  (:action load
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (at ?p ?l) (at-truck ?t ?l))
+    :effect (and (in ?p ?t) (not (at ?p ?l)))
+  )
+
+  (:action unload
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (in ?p ?t) (at-truck ?t ?l))
+    :effect (and (at ?p ?l) (not (in ?p ?t)))
+  )
+
+  (:action drive
+    :parameters (?t - truck ?from ?to - location)
+    :precondition (at-truck ?t ?from)
+    :effect (and (at-truck ?t ?to) (not (at-truck ?t ?from)))
+  )
+)</code></pre>
+    </div>
+  </div>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">PDDL — 问题文件示例</span>
+      <span class="code-toggle-meta">problem.pddl</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>;; 具体配送问题
+(define (problem deliver-package)
+  (:domain logistics)
+  (:objects
+    truck1 - truck
+    pkg1 pkg2 - package
+    locA locB locC - location
+  )
+  (:init
+    (at-truck truck1 locA)
+    (at pkg1 locA)
+    (at pkg2 locB)
+  )
+  (:goal (and (at pkg1 locC) (at pkg2 locA)))
+)</code></pre>
+    </div>
+  </div>
+
+  <h3>8.3 LLM + PDDL 的端到端流程</h3>
+
+  <div class="diagram">
+    <pre class="mermaid">
+graph LR
+    A["自然语言任务<br/>'把包裹从A送到C'"] --> B["LLM 翻译"]
+    B --> C["PDDL Domain"]
+    B --> D["PDDL Problem"]
+    C --> E["符号规划器<br/>(Fast Downward)"]
+    D --> E
+    E --> F["动作序列<br/>[load, drive, unload]"]
+    F --> G["LLM 翻译"]
+    G --> H["自然语言计划<br/>'1. 装载包裹...<br/>2. 驾驶到C...<br/>3. 卸载包裹'"]
+    
+    style A fill:#1c2640,stroke:#4a9eff,color:#eef1f8
+    style H fill:#1c2640,stroke:#06d6a0,color:#eef1f8
+    </pre>
+    <figcaption>图4.9：LLM + PDDL 端到端规划流程</figcaption>
+  </div>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">Python — LLM 生成 PDDL 并调用规划器</span>
+      <span class="code-toggle-meta">~80行</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>import subprocess
+import tempfile
+import os
+
+class PDDLPlanner:
+    """LLM + PDDL 融合规划器"""
+
+    def __init__(self, llm, planner_path: str = "fast-downward"):
+        self.llm = llm
+        self.planner_path = planner_path
+
+    def generate_domain(self, task_description: str) -> str:
+        """让 LLM 根据任务描述生成 PDDL 领域文件"""
+        prompt = f"""你是一个 PDDL 领域专家。请根据以下任务描述，生成完整的 PDDL 领域文件。
+
+任务描述: {task_description}
+
+要求:
+1. 定义所有必要的类型
+2. 定义所有谓词
+3. 定义所有操作符（包含参数、前置条件、效果）
+4. 使用标准的 PDDL 语法
+
+请只输出 PDDL 文件内容，不要其他解释:"""
+
+        return self.llm.generate(prompt, max_tokens=1000)
+
+    def generate_problem(self, task_description: str, domain_pddl: str) -> str:
+        """让 LLM 根据任务和领域定义生成问题文件"""
+        prompt = f"""根据以下 PDDL 领域定义和任务描述，生成 PDDL 问题文件。
+
+领域定义:
+{domain_pddl}
+
+任务描述: {task_description}
+
+请只输出 PDDL 问题文件内容:"""
+
+        return self.llm.generate(prompt, max_tokens=500)
+
+    def solve(self, domain_pddl: str, problem_pddl: str) -> list:
+        """调用符号规划器求解"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.pddl',
+                                         delete=False) as df:
+            df.write(domain_pddl)
+            domain_file = df.name
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.pddl',
+                                         delete=False) as pf:
+            pf.write(problem_pddl)
+            problem_file = pf.name
+
+        try:
+            result = subprocess.run(
+                [self.planner_path, domain_file, problem_file,
+                 "--search", "lama()"],
+                capture_output=True, text=True, timeout=60
+            )
+            # 解析规划器输出，提取动作序列
+            plan = self._parse_plan(result.stdout)
+            return plan
+        finally:
+            os.unlink(domain_file)
+            os.unlink(problem_file)
+
+    def _parse_plan(self, output: str) -> list:
+        """从规划器输出中解析动作序列"""
+        plan = []
+        for line in output.split('\n'):
+            line = line.strip()
+            if line.startswith('(') and line.endswith(')'):
+                plan.append(line)
+        return plan
+
+    def plan(self, task: str) -> str:
+        """端到端规划：自然语言 → PDDL → 求解 → 自然语言"""
+        # 1. LLM 生成 PDDL
+        domain = self.generate_domain(task)
+        problem = self.generate_problem(task, domain)
+
+        # 2. 符号规划器求解
+        action_sequence = self.solve(domain, problem)
+
+        if not action_sequence:
+            return "规划失败：未找到可行方案"
+
+        # 3. LLM 将动作序列翻译回自然语言
+        prompt = f"""将以下 PDDL 动作序列翻译为自然语言执行计划:
+
+动作序列:
+{chr(10).join(action_sequence)}
+
+请用清晰的步骤描述这个计划:"""
+        return self.llm.generate(prompt, max_tokens=500)</code></pre>
+    </div>
+  </div>
+
+  <h3>8.4 PDDL 融合方案的局限</h3>
+
+  <div class="callout warning">
+    <div class="callout-title">PDDL 融合的三道坎</div>
+    <p><strong>第一道坎：翻译质量。</strong>LLM 生成的 PDDL 可能有语法错误或语义不一致。实践中需要严格的验证步骤——用 PDDL 验证器检查语法，用小规模测试用例验证语义。</p>
+    <p><strong>第二道坎：领域建模。</strong>对于复杂领域，LLM 可能遗漏关键约束或操作符。这通常需要在 prompt 中提供领域模板或 few-shot 示例。</p>
+    <p><strong>第三道坎：可扩展性。</strong>PDDL 规划器面对大规模状态空间时可能超时。需要配合启发式（如 LAMA）和状态空间剪枝技术。</p>
+  </div>
+</section>
+
+<section id="sec-asp">
+  <h2>ASP：回答集编程与约束推理</h2>
+
+  <p><strong>Answer Set Programming（ASP）</strong>是一种基于<strong>回答集语义（Stable Model Semantics）</strong>的声明式编程范式。与 PDDL 的"描述操作和状态"不同，ASP 的思路是：<strong>直接描述问题的约束和规则，让求解器找到满足所有约束的解</strong>。它特别适合组合优化、调度、配置等约束满足问题。</p>
+
+  <h3>9.1 ASP 与 LLM 的融合点</h3>
+
+  <p>ASP 与 LLM 的融合模式类似于 PDDL：LLM 负责将自然语言问题翻译为 ASP 规则，ASP 求解器（如 Clingo/gringo）找到满足约束的解，LLM 再将解答翻译回自然语言。</p>
+
+  <div class="tech-panel">
+    <div class="tech-panel-header" onclick="togglePanel(this)">
+      <span class="tech-panel-title">ASP vs PDDL 对比</span>
+      <span class="tech-panel-badge">对比</span>
+      <svg class="tech-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="tech-panel-body">
+      <p><strong>PDDL 是"过程式"的</strong>——描述"做什么动作、前提是什么、效果是什么"，然后搜索动作序列。适合"从A到B"的路径规划。</p>
+      <p><strong>ASP 是"声明式"的</strong>——描述"什么条件必须满足"，然后找到满足所有条件的配置。适合"在约束下找到可行方案"的问题。</p>
+      <p>举例：排班问题用 PDDL 描述会很笨拙（每个排班动作都要定义前置和效果），用 ASP 则很自然——直接声明"每人每天只能排一个班"、"夜班至少2人"等约束，求解器自动找到可行排班。</p>
+    </div>
+  </div>
+
+  <h3>9.2 ASP 规则语法</h3>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">ASP — 会议排班示例</span>
+      <span class="code-toggle-meta">scheduling.lp</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>% 定义人员
+person(alice; bob; charlie; diana).
+
+% 定义时间段
+slot(1; 2; 3; 4).
+
+% 每个人在每个时间段可以被分配
+assign(P, S) :- person(P), slot(S).
+
+% 约束1: 每个时间段至少安排2人
+:- slot(S), #count{P : assign(P, S)} < 2.
+
+% 约束2: 每个人最多被安排2个时间段
+:- person(P), #count{S : assign(P, S)} > 2.
+
+% 约束3: alice 不能在时间段1
+:- assign(alice, 1).
+
+% 约束4: bob 和 charlie 不能同时
+:- assign(bob, S), assign(charlie, S).
+
+% 目标: 最小化总分配数
+#minimize{ P,S : assign(P,S) }.
+
+#show assign/2.</code></pre>
+    </div>
+  </div>
+
+  <h3>9.3 LLM + ASP 端到端实现</h3>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">Python — LLM 生成 ASP 规则并求解</span>
+      <span class="code-toggle-meta">~60行</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>import subprocess
+import tempfile
+
+class ASPPlanner:
+    """LLM + ASP 融合规划器"""
+
+    def __init__(self, llm, clingo_path: str = "clingo"):
+        self.llm = llm
+        self.clingo_path = clingo_path
+
+    def generate_asp(self, problem: str) -> str:
+        """让 LLM 将自然语言问题翻译为 ASP 规则"""
+        prompt = f"""你是一个 ASP (Answer Set Programming) 专家。
+
+请将以下问题翻译为 ASP 规则（使用 Clingo 语法）:
+
+{problem}
+
+要求:
+1. 定义所有必要的事实和规则
+2. 使用 :- 表示约束
+3. 使用 #count, #sum, #minimize 等聚合函数
+4. 使用 #show 显示结果
+5. 只输出 ASP 代码
+
+ASP 代码:"""
+
+        return self.llm.generate(prompt, max_tokens=800)
+
+    def solve(self, asp_code: str, timeout: int = 30) -> list:
+        """调用 Clingo 求解 ASP 程序"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.lp',
+                                         delete=False, encoding='utf-8') as f:
+            f.write(asp_code)
+            filepath = f.name
+
+        try:
+            result = subprocess.run(
+                [self.clingo_path, filepath, '--opt-mode=optN',
+                 f'--time-limit={timeout}', '0'],
+                capture_output=True, text=True, timeout=timeout + 5
+            )
+            # 解析回答集
+            answer_sets = []
+            for line in result.stdout.split('\n'):
+                line = line.strip()
+                if line.startswith('Answer:') or line.startswith('OPTIMUM'):
+                    continue
+                if line and not line.startswith('%') and not line.startswith('Solving'):
+                    atoms = [a.strip() for a in line.split(' ') if a.strip()]
+                    if atoms:
+                        answer_sets.append(atoms)
+            return answer_sets
+        finally:
+            import os
+            os.unlink(filepath)
+
+    def plan(self, problem: str) -> str:
+        """端到端: 自然语言 → ASP → 求解 → 自然语言"""
+        asp_code = self.generate_asp(problem)
+        solutions = self.solve(asp_code)
+
+        if not solutions:
+            return "未找到满足约束的方案"
+
+        # LLM 将 ASP 回答集翻译回自然语言
+        prompt = f"""将以下 ASP 求解结果翻译为自然语言方案:
+
+问题: {problem}
+
+求解结果:
+{chr(10).join(solutions[0])}
+
+请用清晰的自然语言描述这个方案:"""
+        return self.llm.generate(prompt, max_tokens=400)</code></pre>
+    </div>
+  </div>
+
+  <h3>9.4 ASP 适用场景</h3>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>场景</th><th>ASP 优势</th><th>示例</th></tr>
+      <tr><td>排班调度</td><td>自然表达排班约束（每人最多N班、连续不超过M班）</td><td>医院护士排班</td></tr>
+      <tr><td>资源配置</td><td>声明式描述资源约束和分配规则</td><td>云计算资源分配</td></tr>
+      <tr><td>配置问题</td><td>组合空间中的约束满足</td><td>产品配置、软件安装依赖</td></tr>
+      <tr><td>路径规划（多约束）</td><td>同时满足时间窗、容量、优先级等约束</td><td>车辆路径规划（VRP）</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="sec-swiftsage">
+  <h2>SwiftSage：双系统推理框架</h2>
+
+  <p><strong>SwiftSage</strong> 是 Lin 等人在 2023 年提出的一种受认知科学<strong>双系统理论（Dual-Process Theory）</strong>启发的推理框架。它的名字来自 Kahneman 的《思考，快与慢》——<mark class="key">System 1（Swift）</mark>快速直觉，<mark class="key">System 2（Sage）</mark>深思熟虑。</p>
+
+  <h3>10.1 双系统理论在 AI 中的映射</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>System 1: Swift（快速）</h4>
+      <p>使用较小的 LLM（如 7B 模型），快速生成直觉性推理步骤。类似人类的"快思考"——快速、自动、低计算成本。适合处理简单、常规的推理步骤。</p>
+    </div>
+    <div class="card">
+      <h4>System 2: Sage（慢速）</h4>
+      <p>使用较大的 LLM（如 70B 或 GPT-4 级别），进行深度推理和规划。类似人类的"慢思考"——深思熟虑、高计算成本。在 Swift 遇到困难时介入。</p>
+    </div>
+    <div class="card">
+      <h4>协调器: Action Sage</h4>
+      <p>决定何时切换系统。当 Swift 的推理置信度低于阈值时，触发 Sage 接管；当 Sage 解决了困难步骤后，交还 Swift 继续。</p>
+    </div>
+  </div>
+
+  <h3>10.2 SwiftSage 的核心流程</h3>
+
+  <div class="diagram">
+    <pre class="mermaid">
+graph TB
+    Start["问题输入"] --> Swift1["System 1: Swift<br/>(小模型快速推理)"]
+    Swift1 --> Check{"置信度 > 阈值?"}
+    Check -->|"是"| Swift2["Swift 继续推理"]
+    Swift2 --> Check
+    Check -->|"否"| Sage["System 2: Sage<br/>(大模型深度推理)"]
+    Sage --> Done{"困难已解决?"}
+    Done -->|"是"| Swift1
+    Done -->|"否"| Sage
+    Check -->|"得到答案"| End["输出结果"]
+    
+    style Swift1 fill:#1c2640,stroke:#06d6a0,color:#eef1f8
+    style Sage fill:#1c2640,stroke:#a855f7,color:#eef1f8
+    style End fill:#1c2640,stroke:#4a9eff,color:#eef1f8
+    </pre>
+    <figcaption>图4.10：SwiftSage 双系统切换流程</figcaption>
+  </div>
+
+  <h3>10.3 实现细节</h3>
+
+  <div class="code-block-wrapper">
+    <div class="code-toggle" onclick="toggleCode(this)">
+      <span class="code-toggle-label">Python — SwiftSage 双系统推理实现</span>
+      <span class="code-toggle-meta">~100行</span>
+      <span class="code-toggle-icon"></span>
+    </div>
+    <div class="code-content">
+<pre><code>from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class ReasoningStep:
+    """单步推理结果"""
+    content: str
+    confidence: float
+    system: str  # "swift" or "sage"
+
+class SwiftSage:
+    """双系统推理框架"""
+
+    def __init__(self, swift_model, sage_model, confidence_threshold: float = 0.6,
+                 max_steps: int = 20):
+        self.swift = swift_model      # 小模型（快速）
+        self.sage = sage_model        # 大模型（慢速）
+        self.threshold = confidence_threshold
+        self.max_steps = max_steps
+
+    def swift_reasoning(self, problem: str, history: list) -> ReasoningStep:
+        """System 1: 快速直觉推理"""
+        context = "\n".join([h.content for h in history])
+        prompt = f"""问题: {problem}
+
+已有推理:
+{context}
+
+请生成下一步推理（简洁）:"""
+
+        response = self.swift.generate(prompt, max_tokens=100, temperature=0.3)
+
+        # 估算置信度：让 Swift 自评
+        eval_prompt = f"推理步骤: {response}\n\n这个推理步骤的正确性（0-1分）:"
+        try:
+            conf = float(self.swift.generate(eval_prompt, max_tokens=5))
+        except ValueError:
+            conf = 0.5
+
+        return ReasoningStep(content=response, confidence=conf, system="swift")
+
+    def sage_reasoning(self, problem: str, history: list,
+                       stuck_step: ReasoningStep) -> ReasoningStep:
+        """System 2: 深度推理"""
+        context = "\n".join([h.content for h in history])
+        prompt = f"""问题: {problem}
+
+已有推理:
+{context}
+
+上一步推理（置信度较低，可能有误）:
+{stuck_step.content} (置信度: {stuck_step.confidence:.2f})
+
+请仔细分析上一步推理是否正确，如果错误请纠正，然后给出正确的下一步推理:"""
+
+        response = self.sage.generate(prompt, max_tokens=300, temperature=0.1)
+
+        # Sage 的置信度通常更高
+        return ReasoningStep(content=response, confidence=0.85, system="sage")
+
+    def is_solved(self, step: ReasoningStep, problem: str) -> bool:
+        """判断推理是否完成"""
+        prompt = f"问题: {problem}\n推理结果: {step.content}\n\n问题是否已解决？回答 是 或 否:"
+        return '是' in self.swift.generate(prompt, max_tokens=3)
+
+    def solve(self, problem: str) -> list:
+        """双系统推理主循环"""
+        history = []
+        sage_invocations = 0
+        swift_invocations = 0
+
+        for i in range(self.max_steps):
+            # 1. Swift 快速推理
+            step = self.swift_reasoning(problem, history)
+            swift_invocations += 1
+
+            # 2. 检查置信度
+            if step.confidence >= self.threshold:
+                # Swift 置信度高，直接采用
+                history.append(step)
+            else:
+                # 3. 置信度低，切换到 Sage
+                sage_step = self.sage_reasoning(problem, history, step)
+                sage_invocations += 1
+                history.append(sage_step)
+
+            # 4. 检查是否解决
+            if self.is_solved(history[-1], problem):
+                break
+
+        return history
+
+    def stats(self, history: list) -> dict:
+        """统计推理过程中的系统使用情况"""
+        swift_count = sum(1 for h in history if h.system == "swift")
+        sage_count = sum(1 for h in history if h.system == "sage")
+        return {
+            "total_steps": len(history),
+            "swift_steps": swift_count,
+            "sage_steps": sage_count,
+            "sage_ratio": sage_count / max(len(history), 1),
+        }</code></pre>
+    </div>
+  </div>
+
+  <h3>10.4 SwiftSage 的成本效益分析</h3>
+
+  <p>SwiftSage 的核心价值在于<strong>按需调用大模型</strong>——大部分推理步骤交给小模型处理，只在困难步骤调用大模型。典型场景下的成本分布：</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>推理类型</th><th>Swift 处理比例</th><th>Sage 介入比例</th><th>总成本 vs 纯 Sage</th></tr>
+      <tr><td>简单算术</td><td>~90%</td><td>~10%</td><td>~15%</td></tr>
+      <tr><td>多步推理</td><td>~60%</td><td>~40%</td><td>~45%</td></tr>
+      <tr><td>复杂规划</td><td>~30%</td><td>~70%</td><td>~75%</td></tr>
+      <tr><td>创意写作</td><td>~80%</td><td>~20%</td><td>~25%</td></tr>
+    </table>
+  </div>
+
+  <div class="callout success">
+    <div class="callout-title">SwiftSage 的实践启示</div>
+    <p>SwiftSage 告诉我们：<strong>不是所有推理步骤都需要最强模型</strong>。通过动态路由——简单步骤用小模型、困难步骤用大模型——可以在保持推理质量的同时大幅降低成本。这个思路可以推广到更多场景：用小模型做意图识别和简单 QA，只把复杂推理路由到大模型。</p>
+  </div>
+</section>
+
 <section id="sec-compare">
   <h2>规划策略对比与选型</h2>
 
-  <p>我们已经学习了五种规划策略：CoT、ReAct、ToT、GoT、Plan-and-Solve。每种都有其适用场景和局限。本节我们做一个全面的横向对比，帮你在实际项目中做出正确的选型决策。</p>
+  <p>我们已经学习了十种规划策略：CoT、ReAct、ToT、GoT、Plan-and-Solve、RAP、LLM-A*、PDDL、ASP、SwiftSage。每种都有其适用场景和局限。本节我们做一个全面的横向对比，帮你在实际项目中做出正确的选型决策。</p>
 
   <h3>7.1 全面对比表</h3>
 
@@ -3475,6 +4394,11 @@ V(s') 是状态 s' 的价值<br/>
       <tr><td>ToT</td><td>树状多路搜索</td><td>指数成本</td><td>并行评估+启发式剪枝</td></tr>
       <tr><td>GoT</td><td>图状合并精炼</td><td>图复杂度</td><td>拓扑排序+增量评估</td></tr>
       <tr><td>Plan-and-Solve</td><td>先规划再执行</td><td>失败级联</td><td>依赖图+检查点</td></tr>
+      <tr><td>RAP</td><td>世界模型+MCTS搜索</td><td>模拟偏差+高成本</td><td>快慢混合策略</td></tr>
+      <tr><td>LLM-A*</td><td>LLM启发式+A*搜索</td><td>h(n)估算不准</td><td>结合传统启发式</td></tr>
+      <tr><td>PDDL</td><td>符号规划+LLM翻译</td><td>翻译质量+可扩展性</td><td>LLM翻译+验证器</td></tr>
+      <tr><td>ASP</td><td>约束满足+声明式</td><td>问题建模门槛</td><td>LLM自动生成规则</td></tr>
+      <tr><td>SwiftSage</td><td>双系统按需切换</td><td>切换阈值难调</td><td>动态置信度评估</td></tr>
     </table>
   </div>
 
@@ -3483,7 +4407,7 @@ V(s') 是状态 s' 的价值<br/>
   <div class="callout success">
     <div class="callout-title">从本章带走的三件事</div>
     <p><strong>1. 规划是智能体的"前额叶"</strong>——它让智能体从"刺激-反应"的聊天机器人升级为"目标-规划-执行"的真正智能体。没有规划，就没有智能体。</p>
-    <p><strong>2. 从 CoT 到 GoT 是一条进化谱系</strong>——线性→工具增强→树状搜索→图状合并→分层规划。每一步进化都解决了前一步的局限，但也引入了新的复杂度。</p>
+    <p><strong>2. 从 CoT 到 SwiftSage 是一条进化谱系</strong>——线性→工具增强→树状搜索→图状合并→分层规划→世界模型→符号融合→双系统。每一步进化都解决了前一步的局限，但也引入了新的复杂度。</p>
     <p><strong>3. 痛点驱动优化，优化驱动创新</strong>——理解每种策略"哪里会出错"（痛点），比记住"怎么用"更重要。因为只有理解了痛点，你才能在它出错时知道怎么修。</p>
   </div>
 
@@ -3491,8 +4415,8 @@ V(s') 是状态 s' 的价值<br/>
 </section>
 
       <nav class="chapter-nav">
-        <a href="03-perception.html" class="nav-prev"><span class="nav-direction">← 上一章</span><span class="nav-title">感知模块与关键技术</span></a>
-        <a href="05-memory.html" class="nav-next"><span class="nav-direction">下一章 →</span><span class="nav-title">记忆模块与关键技术</span></a>
+        <a href="05-rag.html" class="nav-prev"><span class="nav-direction">← 上一章</span><span class="nav-title">检索增强生成（RAG）</span></a>
+        <a href="07-action.html" class="nav-next"><span class="nav-direction">下一章 →</span><span class="nav-title">行动模块与技术</span></a>
       </nav>
     </div>
   </article>
@@ -3502,7 +4426,7 @@ V(s') 是状态 s' 的价值<br/>
   </div>
 
   <footer>
-    <p>智能体构建全流程指南（详解版） · 第 4 章 · <a href="../index.html">返回目录</a></p>
+    <p>智能体构建全流程指南（详解版） · 第 6 章 · <a href="../index.html">返回目录</a></p>
   </footer>
 
   <script src="../_shared/js/chapter.js"></script>
