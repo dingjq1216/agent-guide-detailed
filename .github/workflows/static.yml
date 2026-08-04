@@ -1,5 +1,6 @@
 ﻿name: Deploy to GitHub Pages
 
+# 17章详解版 - 自动部署到 GitHub Pages
 on:
   push:
     branches: [main]
